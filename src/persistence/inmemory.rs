@@ -12,25 +12,9 @@ pub struct InMemoryPersistence {
 }
 impl Default for InMemoryPersistence {
     fn default() -> InMemoryPersistence {
-        let conn = Connection::open_in_memory().unwrap();
-        conn.execute(
-            r#"
-            CREATE TABLE person (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL
-            )
-        "#,
-            NO_PARAMS,
-        )
-        .unwrap();
-        conn.execute(
-            r#"
-            INSERT INTO person (name) VALUES (?1), (?2), (?3)
-        "#,
-            params!["Alice", "Bob", "Carol"],
-        )
-        .unwrap();
-        InMemoryPersistence { conn }
+        InMemoryPersistence {
+            conn: Connection::open_in_memory().unwrap(),
+        }
     }
 }
 
