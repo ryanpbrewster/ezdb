@@ -19,15 +19,11 @@ describe("REST API", () => {
 });
 
 async function get() {
-  return req({ uri: "http://localhost:9000/.json", method: "GET", json: true });
+  return req({ uri: "http://localhost:9000/v0/", method: "GET", json: true });
 }
 
 async function put(data) {
-  return req({ uri: "http://localhost:9000/.json", method: "PUT", json: data });
-}
-
-async function post(data) {
-  return req({ uri: "http://localhost:9000/.json", method: "POST", json: data });
+  return req({ uri: "http://localhost:9000/v0/", method: "PUT", json: data });
 }
 
 async function req(opts) {

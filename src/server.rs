@@ -1,46 +1,21 @@
 use actix::{Addr, MailboxError};
 use actix_web::dev::HttpServiceFactory;
-use actix_web::web::Bytes;
-use actix_web::{web, Error, HttpRequest, HttpResponse};
+use actix_web::{web, Error, HttpResponse};
 use log::debug;
 
 use crate::core::{CoreActor, RestMessage};
-use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
+use actix_web::error::ErrorInternalServerError;
 
 pub fn rest_service() -> impl HttpServiceFactory {
-    web::resource("{any:.*}")
-        .route(web::get().to(handle_rest_get))
-        .route(web::put().to(handle_rest_put))
-        .route(web::delete().to(handle_rest_delete))
+    web::resource("/v0/{name}").route(web::get().to(handle_rest_get))
 }
 
 async fn handle_rest_get(
-    req: HttpRequest,
+    path: web::Path<String>,
     srv: web::Data<Addr<CoreActor>>,
 ) -> Result<HttpResponse, Error> {
-    debug!("HTTP GET @ {}", req.path());
-    let path = req.path().to_owned();
-    wrap_output(srv.send(RestMessage::Get(path)).await)
-}
-
-async fn handle_rest_delete(
-    req: HttpRequest,
-    srv: web::Data<Addr<CoreActor>>,
-) -> Result<HttpResponse, Error> {
-    debug!("HTTP DELETE @ {}", req.path());
-    let path = req.path().to_owned();
-    wrap_output(srv.send(RestMessage::Delete(path)).await)
-}
-
-async fn handle_rest_put(
-    req: HttpRequest,
-    payload: Bytes,
-    srv: web::Data<Addr<CoreActor>>,
-) -> Result<HttpResponse, Error> {
-    debug!("HTTP PUT @ {} w/ {:?}", req.path(), payload);
-    let path = req.path().to_owned();
-    let body = serde_json::from_slice(&payload).map_err(ErrorBadRequest)?;
-    wrap_output(srv.send(RestMessage::Put(path, body)).await)
+    debug!("HTTP GET @ {}", path);
+    wrap_output(srv.send(RestMessage::Get(path.into_inner())).await)
 }
 
 fn wrap_output(result: Result<Option<String>, MailboxError>) -> Result<HttpResponse, Error> {

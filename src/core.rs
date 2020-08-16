@@ -32,7 +32,7 @@ impl Handler<RestMessage> for CoreActor {
         match msg {
             RestMessage::Get(path) => {
                 let data = self.persistence.get(path).expect("read");
-                Some(serde_json::to_string(data).expect("serialize"))
+                Some(serde_json::to_string(&data).expect("serialize"))
             }
             RestMessage::Put(path, data) => {
                 self.write(path, data);
