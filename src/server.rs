@@ -8,7 +8,7 @@ use crate::core::{CoreActor, RestMessage};
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 
 pub fn rest_service() -> impl HttpServiceFactory {
-    web::resource("{any:.*\\.json}")
+    web::resource("{any:.*}")
         .route(web::get().to(handle_rest_get))
         .route(web::put().to(handle_rest_put))
         .route(web::delete().to(handle_rest_delete))
