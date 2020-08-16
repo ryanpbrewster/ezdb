@@ -1,12 +1,10 @@
-use crate::persistence::{Persistence, PersistenceResult};
+use crate::persistence::{Persistence, PersistenceError, PersistenceResult};
 use log::debug;
 use rusqlite::{params, Connection, NO_PARAMS};
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
 
 pub struct InMemoryPersistence {
-    full_data: BTreeMap<String, Value>,
     conn: Connection,
 }
 impl Default for InMemoryPersistence {
@@ -29,10 +27,7 @@ impl Default for InMemoryPersistence {
             params!["Alice", "Bob", "Carol"],
         )
         .unwrap();
-        InMemoryPersistence {
-            full_data: BTreeMap::new(),
-            conn,
-        }
+        InMemoryPersistence { conn }
     }
 }
 
@@ -43,9 +38,18 @@ struct Person {
 }
 
 impl Persistence for InMemoryPersistence {
-    fn get(&self, path: String) -> PersistenceResult<Value> {
-        debug!("running query {}", path);
-        let mut stmt = self.conn.prepare("SELECT id, name FROM person")?;
+    fn query_named(&self, name: String) -> PersistenceResult<Value> {
+        debug!("running named query: {}", name);
+        Err(PersistenceError::Unknown("unimplemented".to_owned()))
+    }
+    fn mutate_named(&self, name: String) -> PersistenceResult<()> {
+        debug!("performing named mutation: {}", name);
+        Err(PersistenceError::Unknown("unimplemented".to_owned()))
+    }
+
+    fn query_raw(&self, query: String) -> PersistenceResult<Value> {
+        debug!("running query {}", query);
+        let mut stmt = self.conn.prepare(&query)?;
         let rows: Vec<Person> = stmt
             .query_map(NO_PARAMS, |row| {
                 Ok(Person {
@@ -56,10 +60,9 @@ impl Persistence for InMemoryPersistence {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(serde_json::to_value(&rows).unwrap())
     }
-
-    fn put(&mut self, path: String, value: Value) -> PersistenceResult<()> {
-        debug!("writing @ {:?} == {}", path, value);
-        self.full_data.insert(path, value);
+    fn mutate_raw(&self, stmt: String) -> PersistenceResult<()> {
+        debug!("running mutation {}", stmt);
+        self.conn.execute(&stmt, NO_PARAMS)?;
         Ok(())
     }
 }

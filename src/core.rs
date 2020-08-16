@@ -1,7 +1,6 @@
 use crate::persistence::inmemory::InMemoryPersistence;
-use crate::persistence::Persistence;
+use crate::persistence::{Persistence, PersistenceResult};
 use actix::prelude::*;
-use serde_json::Value;
 
 /// `CoreActor` manages connections to a given database.
 #[derive(Default)]
@@ -16,38 +15,37 @@ impl Actor for CoreActor {
 /// Message from a REST request
 #[derive(Debug)]
 pub enum RestMessage {
-    Get(String),
-    Delete(String),
-    Put(String, Value),
+    QueryNamed(String),
+    MutateNamed(String),
+    QueryRaw(String),
+    MutateRaw(String),
 }
 
 impl Message for RestMessage {
-    type Result = Option<String>;
+    type Result = PersistenceResult<String>;
 }
 
 impl Handler<RestMessage> for CoreActor {
-    type Result = Option<String>;
+    type Result = PersistenceResult<String>;
 
     fn handle(&mut self, msg: RestMessage, _: &mut Context<Self>) -> Self::Result {
         match msg {
-            RestMessage::Get(path) => {
-                let data = self.persistence.get(path).expect("read");
-                Some(serde_json::to_string(&data).expect("serialize"))
+            RestMessage::QueryNamed(name) => {
+                let data = self.persistence.query_named(name)?;
+                Ok(serde_json::to_string(&data).expect("serialize"))
             }
-            RestMessage::Put(path, data) => {
-                self.write(path, data);
-                None
+            RestMessage::QueryRaw(query) => {
+                let data = self.persistence.query_raw(query)?;
+                Ok(serde_json::to_string(&data).expect("serialize"))
             }
-            RestMessage::Delete(path) => {
-                self.write(path, Value::Null);
-                None
+            RestMessage::MutateNamed(name) => {
+                let data = self.persistence.mutate_named(name)?;
+                Ok(serde_json::to_string(&data).expect("serialize"))
+            }
+            RestMessage::MutateRaw(stmt) => {
+                let data = self.persistence.mutate_raw(stmt)?;
+                Ok(serde_json::to_string(&data).expect("serialize"))
             }
         }
-    }
-}
-
-impl CoreActor {
-    fn write(&mut self, path: String, data: Value) {
-        self.persistence.put(path, data).expect("put data");
     }
 }

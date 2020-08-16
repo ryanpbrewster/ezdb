@@ -13,8 +13,10 @@ impl From<rusqlite::Error> for PersistenceError {
 }
 
 pub trait Persistence {
-    fn get(&self, path: String) -> PersistenceResult<Value>;
-    fn put(&mut self, path: String, value: Value) -> PersistenceResult<()>;
+    fn query_named(&self, name: String) -> PersistenceResult<Value>;
+    fn mutate_named(&self, name: String) -> PersistenceResult<()>;
+    fn query_raw(&self, query: String) -> PersistenceResult<Value>;
+    fn mutate_raw(&self, stmt: String) -> PersistenceResult<()>;
 }
 
 pub mod inmemory;
