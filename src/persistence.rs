@@ -6,6 +6,7 @@ pub type PersistenceResult<T> = ::std::result::Result<T, PersistenceError>;
 pub enum PersistenceError {
     Unknown(String),
 }
+
 impl From<rusqlite::Error> for PersistenceError {
     fn from(err: rusqlite::Error) -> PersistenceError {
         PersistenceError::Unknown(format!("{:?}", err))
@@ -19,4 +20,6 @@ pub trait Persistence {
     fn mutate_raw(&self, stmt: String) -> PersistenceResult<()>;
 }
 
-pub mod inmemory;
+mod sqlite;
+
+pub use sqlite::SqlitePersistence;

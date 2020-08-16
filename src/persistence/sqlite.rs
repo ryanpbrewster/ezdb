@@ -1,24 +1,30 @@
 use crate::persistence::{Persistence, PersistenceError, PersistenceResult};
 use log::debug;
 use rusqlite::types::{FromSql, FromSqlError, ValueRef};
-use rusqlite::{params, Connection, NO_PARAMS};
+use rusqlite::{Connection, NO_PARAMS};
 use serde::ser::Serializer;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::path::Path;
 
-pub struct InMemoryPersistence {
+pub struct SqlitePersistence {
     conn: Connection,
 }
-impl Default for InMemoryPersistence {
-    fn default() -> InMemoryPersistence {
-        InMemoryPersistence {
+impl SqlitePersistence {
+    pub fn in_memory() -> SqlitePersistence {
+        SqlitePersistence {
             conn: Connection::open_in_memory().unwrap(),
         }
     }
+    pub fn from_file(path: &Path) -> PersistenceResult<SqlitePersistence> {
+        Ok(SqlitePersistence {
+            conn: Connection::open(path)?,
+        })
+    }
 }
 
-impl Persistence for InMemoryPersistence {
+impl Persistence for SqlitePersistence {
     fn query_named(&self, name: String) -> PersistenceResult<Value> {
         debug!("running named query: {}", name);
         Err(PersistenceError::Unknown("unimplemented".to_owned()))

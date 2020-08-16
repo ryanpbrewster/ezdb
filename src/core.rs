@@ -1,11 +1,14 @@
-use crate::persistence::inmemory::InMemoryPersistence;
-use crate::persistence::{Persistence, PersistenceResult};
+use crate::persistence::{Persistence, PersistenceResult, SqlitePersistence};
 use actix::prelude::*;
 
 /// `CoreActor` manages connections to a given database.
-#[derive(Default)]
 pub struct CoreActor {
-    persistence: InMemoryPersistence,
+    persistence: SqlitePersistence,
+}
+impl CoreActor {
+    pub fn new(persistence: SqlitePersistence) -> CoreActor {
+        CoreActor { persistence }
+    }
 }
 
 impl Actor for CoreActor {
