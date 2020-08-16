@@ -10,7 +10,7 @@ async fn main() -> std::io::Result<()> {
     let addr = format!("{}:{}", opts.host, opts.port);
 
     let persistence = match opts.db_file {
-        None => ezdb::persistence::SqlitePersistence::in_memory(),
+        None => ezdb::persistence::SqlitePersistence::in_memory().unwrap(),
         Some(db_file) => ezdb::persistence::SqlitePersistence::from_file(&db_file).unwrap(),
     };
     let core = ezdb::core::CoreActor::new(persistence).start();

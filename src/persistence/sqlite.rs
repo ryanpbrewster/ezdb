@@ -12,16 +12,28 @@ pub struct SqlitePersistence {
     conn: Connection,
 }
 impl SqlitePersistence {
-    pub fn in_memory() -> SqlitePersistence {
-        SqlitePersistence {
-            conn: Connection::open_in_memory().unwrap(),
-        }
+    pub fn in_memory() -> PersistenceResult<SqlitePersistence> {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_metadata(&conn)?;
+        Ok(SqlitePersistence { conn })
     }
     pub fn from_file(path: &Path) -> PersistenceResult<SqlitePersistence> {
-        Ok(SqlitePersistence {
-            conn: Connection::open(path)?,
-        })
+        let conn = Connection::open(path)?;
+        initialize_metadata(&conn)?;
+        Ok(SqlitePersistence { conn })
     }
+}
+fn initialize_metadata(conn: &Connection) -> PersistenceResult<()> {
+    conn.execute(
+        r#"
+        CREATE TABLE IF NOT EXISTS __ezdb_metadata__ (
+            name TEXT NOT NULL PRIMARY KEY,
+            raw_sql TEXT NOT NULL
+        )
+    "#,
+        NO_PARAMS,
+    )?;
+    Ok(())
 }
 
 impl Persistence for SqlitePersistence {
