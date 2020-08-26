@@ -1,3 +1,4 @@
+use crate::core::Policy;
 use serde_json::Value;
 
 pub type PersistenceResult<T> = ::std::result::Result<T, PersistenceError>;
@@ -18,6 +19,8 @@ pub trait Persistence {
     fn mutate_named(&self, name: String) -> PersistenceResult<()>;
     fn query_raw(&self, query: String) -> PersistenceResult<Value>;
     fn mutate_raw(&self, stmt: String) -> PersistenceResult<()>;
+    fn fetch_policy(&self) -> PersistenceResult<Policy>;
+    fn set_policy(&self, policy: Policy) -> PersistenceResult<()>;
 }
 
 mod sqlite;

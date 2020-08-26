@@ -1,0 +1,10 @@
+{
+  "queries": [{
+    "name": "foo",
+    "raw_sql": "SELECT * FROM person"
+  }],
+  "mutations": [{
+      "name": "foo",
+      "raw_sql": "INSERT INTO person (name) VALUES ('alice')"
+  }]
+}

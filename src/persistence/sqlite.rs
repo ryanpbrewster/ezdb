@@ -1,7 +1,8 @@
+use crate::core::{MutationPolicy, Policy, QueryPolicy};
 use crate::persistence::{Persistence, PersistenceError, PersistenceResult};
 use log::debug;
 use rusqlite::types::{FromSql, FromSqlError, ValueRef};
-use rusqlite::{Connection, NO_PARAMS};
+use rusqlite::{Connection, Transaction, NO_PARAMS};
 use serde::ser::Serializer;
 use serde::Serialize;
 use serde_json::Value;
@@ -27,8 +28,10 @@ fn initialize_metadata(conn: &Connection) -> PersistenceResult<()> {
     conn.execute(
         r#"
         CREATE TABLE IF NOT EXISTS __ezdb_metadata__ (
-            name TEXT NOT NULL PRIMARY KEY,
-            raw_sql TEXT NOT NULL
+            type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            raw_sql TEXT NOT NULL,
+            PRIMARY KEY (type, name)
         )
     "#,
         NO_PARAMS,
@@ -64,6 +67,50 @@ impl Persistence for SqlitePersistence {
         self.conn.execute(&stmt, NO_PARAMS)?;
         Ok(())
     }
+    fn fetch_policy(&self) -> PersistenceResult<Policy> {
+        debug!("fetching policy");
+        let mut queries = self
+            .conn
+            .prepare("SELECT name, raw_sql FROM __ezdb_metadata__ WHERE type = 'query'")?;
+        let queries: Vec<QueryPolicy> = queries
+            .query_map(NO_PARAMS, |row| {
+                let name: String = row.get(0)?;
+                let raw_sql: String = row.get(1)?;
+                Ok(QueryPolicy { name, raw_sql })
+            })?
+            .collect::<Result<_, _>>()?;
+        let mut mutations = self
+            .conn
+            .prepare("SELECT name, raw_sql FROM __ezdb_metadata__ WHERE type = 'mutation'")?;
+        let mutations: Vec<MutationPolicy> = mutations
+            .query_map(NO_PARAMS, |row| {
+                let name: String = row.get(0)?;
+                let raw_sql: String = row.get(1)?;
+                Ok(MutationPolicy { name, raw_sql })
+            })?
+            .collect::<Result<_, _>>()?;
+        Ok(Policy { queries, mutations })
+    }
+    fn set_policy(&self, policy: Policy) -> PersistenceResult<()> {
+        debug!("updating policy to: {:?}", policy);
+        let mut txn = self.conn.unchecked_transaction()?;
+        txn.execute("DELETE FROM __ezdb_metadata__", NO_PARAMS)?;
+        populate_policy(&mut txn, policy)?;
+        txn.commit()?;
+        Ok(())
+    }
+}
+
+fn populate_policy(txn: &mut Transaction, policy: Policy) -> PersistenceResult<()> {
+    let mut stmt =
+        txn.prepare("INSERT INTO __ezdb_metadata__ (type, name, raw_sql) VALUES (?, ?, ?)")?;
+    for p in policy.queries {
+        stmt.execute(&["query", &p.name, &p.raw_sql])?;
+    }
+    for p in policy.mutations {
+        stmt.execute(&["mutation", &p.name, &p.raw_sql])?;
+    }
+    Ok(())
 }
 
 // TODO(rpb): try to optimize this so that it's serialized directly from the ValueRef.

@@ -1,5 +1,6 @@
 use crate::persistence::{Persistence, PersistenceResult, SqlitePersistence};
 use actix::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// `CoreActor` manages connections to a given database.
 pub struct CoreActor {
@@ -22,6 +23,26 @@ pub enum RestMessage {
     MutateNamed(String),
     QueryRaw(String),
     MutateRaw(String),
+    FetchPolicy,
+    SetPolicy(Policy),
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Policy {
+    pub queries: Vec<QueryPolicy>,
+    pub mutations: Vec<MutationPolicy>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct QueryPolicy {
+    pub name: String,
+    pub raw_sql: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MutationPolicy {
+    pub name: String,
+    pub raw_sql: String,
 }
 
 impl Message for RestMessage {
@@ -47,6 +68,14 @@ impl Handler<RestMessage> for CoreActor {
             }
             RestMessage::MutateRaw(stmt) => {
                 let data = self.persistence.mutate_raw(stmt)?;
+                Ok(serde_json::to_string(&data).expect("serialize"))
+            }
+            RestMessage::FetchPolicy => {
+                let data = self.persistence.fetch_policy()?;
+                Ok(serde_json::to_string(&data).expect("serialize"))
+            }
+            RestMessage::SetPolicy(policy) => {
+                let data = self.persistence.set_policy(policy)?;
                 Ok(serde_json::to_string(&data).expect("serialize"))
             }
         }
