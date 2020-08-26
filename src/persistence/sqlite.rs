@@ -1,5 +1,5 @@
 use crate::core::{MutationPolicy, Policy, QueryPolicy};
-use crate::persistence::{Persistence, PersistenceError, PersistenceResult};
+use crate::persistence::{Persistence, PersistenceResult};
 use log::debug;
 use rusqlite::types::{FromSql, FromSqlError, ValueRef};
 use rusqlite::{Connection, Transaction, NO_PARAMS};
@@ -42,11 +42,36 @@ fn initialize_metadata(conn: &Connection) -> PersistenceResult<()> {
 impl Persistence for SqlitePersistence {
     fn query_named(&self, name: String) -> PersistenceResult<Value> {
         debug!("running named query: {}", name);
-        Err(PersistenceError::Unknown("unimplemented".to_owned()))
+        let txn = self.conn.unchecked_transaction()?;
+        let query: String = txn.query_row(
+            "SELECT raw_sql FROM __ezdb_metadata__ WHERE type = 'query' AND name = ?",
+            &[&name],
+            |row| row.get(0),
+        )?;
+        let mut stmt = self.conn.prepare(&query)?;
+        let rows: Vec<BTreeMap<String, MyValue>> = stmt
+            .query_map(NO_PARAMS, |row| {
+                let values: BTreeMap<String, MyValue> = (0..row.column_count())
+                    .map(|i| (row.column_name(i).unwrap().to_owned(), row.get_unwrap(i)))
+                    .collect();
+                Ok(values)
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        txn.commit()?;
+        Ok(serde_json::to_value(&rows).unwrap())
     }
     fn mutate_named(&self, name: String) -> PersistenceResult<()> {
         debug!("performing named mutation: {}", name);
-        Err(PersistenceError::Unknown("unimplemented".to_owned()))
+        let txn = self.conn.unchecked_transaction()?;
+        let mutation: String = txn.query_row(
+            "SELECT raw_sql FROM __ezdb_metadata__ WHERE type = 'mutation' AND name = ?",
+            &[&name],
+            |row| row.get(0),
+        )?;
+        let mut stmt = self.conn.prepare(&mutation)?;
+        stmt.execute(NO_PARAMS)?;
+        txn.commit()?;
+        Ok(())
     }
 
     fn query_raw(&self, query: String) -> PersistenceResult<Value> {
