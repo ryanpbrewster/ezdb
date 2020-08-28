@@ -1,7 +1,7 @@
 use crate::core::{MutationPolicy, Policy, QueryPolicy};
 use crate::persistence::{Persistence, PersistenceResult};
 use log::debug;
-use rusqlite::types::{FromSql, FromSqlError, ValueRef};
+use rusqlite::types::{FromSql, FromSqlError, ValueRef, ToSql};
 use rusqlite::{Connection, Transaction, NO_PARAMS};
 use serde::ser::Serializer;
 use serde::Serialize;
@@ -40,7 +40,7 @@ fn initialize_metadata(conn: &Connection) -> PersistenceResult<()> {
 }
 
 impl Persistence for SqlitePersistence {
-    fn query_named(&self, name: String) -> PersistenceResult<Value> {
+    fn query_named(&self, name: String, params: BTreeMap<String, Value>) -> PersistenceResult<Value> {
         debug!("running named query: {}", name);
         let txn = self.conn.unchecked_transaction()?;
         let query: String = txn.query_row(
@@ -48,9 +48,14 @@ impl Persistence for SqlitePersistence {
             &[&name],
             |row| row.get(0),
         )?;
+        let mangled: Vec<(&str, &dyn ToSql)> = params.iter().map(|(k, v)| {
+            let kk = k.as_ref();
+            let vv: &dyn ToSql = v;
+            (kk, vv)
+        }).collect();
         let mut stmt = self.conn.prepare(&query)?;
         let rows: Vec<BTreeMap<String, MyValue>> = stmt
-            .query_map(NO_PARAMS, |row| {
+            .query_map_named(mangled.as_slice(), |row| {
                 let values: BTreeMap<String, MyValue> = (0..row.column_count())
                     .map(|i| (row.column_name(i).unwrap().to_owned(), row.get_unwrap(i)))
                     .collect();

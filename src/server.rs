@@ -5,6 +5,8 @@ use actix_web::{web, Error, HttpResponse};
 use crate::core::{CoreActor, Policy, RestMessage};
 use crate::persistence::PersistenceResult;
 use actix_web::error::ErrorInternalServerError;
+use serde_json::Value;
+use std::collections::BTreeMap;
 
 pub fn rest_service() -> impl HttpServiceFactory {
     web::scope("/v0")
@@ -53,8 +55,9 @@ async fn handle_policy_put(
 async fn handle_named_get(
     path: web::Path<String>,
     srv: web::Data<Addr<CoreActor>>,
+    params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
-    wrap_output(srv.send(RestMessage::QueryNamed(path.into_inner())).await)
+    wrap_output(srv.send(RestMessage::QueryNamed(path.into_inner(), params.into_inner())).await)
 }
 
 async fn handle_named_post(

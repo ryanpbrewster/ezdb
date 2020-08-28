@@ -1,6 +1,8 @@
 use crate::persistence::{Persistence, PersistenceResult, SqlitePersistence};
 use actix::prelude::*;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
 
 /// `CoreActor` manages connections to a given database.
 pub struct CoreActor {
@@ -19,7 +21,7 @@ impl Actor for CoreActor {
 /// Message from a REST request
 #[derive(Debug)]
 pub enum RestMessage {
-    QueryNamed(String),
+    QueryNamed(String, BTreeMap<String, Value>),
     MutateNamed(String),
     QueryRaw(String),
     MutateRaw(String),
@@ -54,8 +56,8 @@ impl Handler<RestMessage> for CoreActor {
 
     fn handle(&mut self, msg: RestMessage, _: &mut Context<Self>) -> Self::Result {
         match msg {
-            RestMessage::QueryNamed(name) => {
-                let data = self.persistence.query_named(name)?;
+            RestMessage::QueryNamed(name, params) => {
+                let data = self.persistence.query_named(name, params)?;
                 Ok(serde_json::to_string(&data).expect("serialize"))
             }
             RestMessage::QueryRaw(query) => {

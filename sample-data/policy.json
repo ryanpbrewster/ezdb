@@ -2,6 +2,9 @@
   "queries": [{
     "name": "foo",
     "raw_sql": "SELECT * FROM person"
+  }, {
+    "name": "bar",
+    "raw_sql": "SELECT * FROM person WHERE id = :id"
   }],
   "mutations": [{
       "name": "foo",

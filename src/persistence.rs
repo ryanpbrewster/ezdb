@@ -1,5 +1,6 @@
 use crate::core::Policy;
 use serde_json::Value;
+use std::collections::BTreeMap;
 
 pub type PersistenceResult<T> = ::std::result::Result<T, PersistenceError>;
 
@@ -15,7 +16,7 @@ impl From<rusqlite::Error> for PersistenceError {
 }
 
 pub trait Persistence {
-    fn query_named(&self, name: String) -> PersistenceResult<Value>;
+    fn query_named(&self, name: String, params: BTreeMap<String, Value>) -> PersistenceResult<Value>;
     fn mutate_named(&self, name: String) -> PersistenceResult<()>;
     fn query_raw(&self, query: String) -> PersistenceResult<Value>;
     fn mutate_raw(&self, stmt: String) -> PersistenceResult<()>;
