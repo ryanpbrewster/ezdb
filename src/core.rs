@@ -1,5 +1,6 @@
 use crate::persistence::{Persistence, PersistenceResult, SqlitePersistence};
 use actix::prelude::*;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -22,7 +23,7 @@ impl Actor for CoreActor {
 #[derive(Debug)]
 pub enum RestMessage {
     QueryNamed(String, BTreeMap<String, Value>),
-    MutateNamed(String),
+    MutateNamed(String, BTreeMap<String, Value>),
     QueryRaw(String),
     MutateRaw(String),
     FetchPolicy,
@@ -55,6 +56,7 @@ impl Handler<RestMessage> for CoreActor {
     type Result = PersistenceResult<String>;
 
     fn handle(&mut self, msg: RestMessage, _: &mut Context<Self>) -> Self::Result {
+        debug!("handling {:?}", msg);
         match msg {
             RestMessage::QueryNamed(name, params) => {
                 let data = self.persistence.query_named(name, params)?;
@@ -64,8 +66,8 @@ impl Handler<RestMessage> for CoreActor {
                 let data = self.persistence.query_raw(query)?;
                 Ok(serde_json::to_string(&data).expect("serialize"))
             }
-            RestMessage::MutateNamed(name) => {
-                let data = self.persistence.mutate_named(name)?;
+            RestMessage::MutateNamed(name, params) => {
+                let data = self.persistence.mutate_named(name, params)?;
                 Ok(serde_json::to_string(&data).expect("serialize"))
             }
             RestMessage::MutateRaw(stmt) => {

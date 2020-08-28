@@ -21,7 +21,7 @@ pub trait Persistence {
         name: String,
         params: BTreeMap<String, Value>,
     ) -> PersistenceResult<Value>;
-    fn mutate_named(&self, name: String) -> PersistenceResult<()>;
+    fn mutate_named(&self, name: String, params: BTreeMap<String, Value>) -> PersistenceResult<()>;
     fn query_raw(&self, query: String) -> PersistenceResult<Value>;
     fn mutate_raw(&self, stmt: String) -> PersistenceResult<()>;
     fn fetch_policy(&self) -> PersistenceResult<Policy>;

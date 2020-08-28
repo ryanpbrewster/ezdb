@@ -1,7 +1,7 @@
 use crate::core::{MutationPolicy, Policy, QueryPolicy};
 use crate::persistence::{Persistence, PersistenceResult};
 use log::debug;
-use rusqlite::types::{FromSql, FromSqlError, ToSql, ValueRef};
+use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, ValueRef};
 use rusqlite::{Connection, Transaction, NO_PARAMS};
 use serde::ser::Serializer;
 use serde::Serialize;
@@ -52,17 +52,15 @@ impl Persistence for SqlitePersistence {
             &[&name],
             |row| row.get(0),
         )?;
-        let mangled: Vec<(&str, &dyn ToSql)> = params
+        let params: Vec<(String, MyValue)> =
+            params.into_iter().map(|(k, v)| (k, v.into())).collect();
+        let params: Vec<(&str, &dyn ToSql)> = params
             .iter()
-            .map(|(k, v)| {
-                let kk = k.as_ref();
-                let vv: &dyn ToSql = v;
-                (kk, vv)
-            })
+            .map(|(k, v)| (k.as_ref(), v as &dyn ToSql))
             .collect();
         let mut stmt = self.conn.prepare(&query)?;
         let rows: Vec<BTreeMap<String, MyValue>> = stmt
-            .query_map_named(mangled.as_slice(), |row| {
+            .query_map_named(params.as_slice(), |row| {
                 let values: BTreeMap<String, MyValue> = (0..row.column_count())
                     .map(|i| (row.column_name(i).unwrap().to_owned(), row.get_unwrap(i)))
                     .collect();
@@ -72,7 +70,7 @@ impl Persistence for SqlitePersistence {
         txn.commit()?;
         Ok(serde_json::to_value(&rows).unwrap())
     }
-    fn mutate_named(&self, name: String) -> PersistenceResult<()> {
+    fn mutate_named(&self, name: String, params: BTreeMap<String, Value>) -> PersistenceResult<()> {
         debug!("performing named mutation: {}", name);
         let txn = self.conn.unchecked_transaction()?;
         let mutation: String = txn.query_row(
@@ -80,8 +78,14 @@ impl Persistence for SqlitePersistence {
             &[&name],
             |row| row.get(0),
         )?;
+        let params: Vec<(String, MyValue)> =
+            params.into_iter().map(|(k, v)| (k, v.into())).collect();
+        let params: Vec<(&str, &dyn ToSql)> = params
+            .iter()
+            .map(|(k, v)| (k.as_ref(), v as &dyn ToSql))
+            .collect();
         let mut stmt = self.conn.prepare(&mutation)?;
-        stmt.execute(NO_PARAMS)?;
+        stmt.execute_named(params.as_slice())?;
         txn.commit()?;
         Ok(())
     }
@@ -180,5 +184,33 @@ impl FromSql for MyValue {
             ValueRef::Text(i) => MyValue::Text(String::from_utf8(i.to_vec()).unwrap()),
             ValueRef::Blob(i) => MyValue::Bytes(i.to_vec()),
         })
+    }
+}
+
+impl ToSql for MyValue {
+    fn to_sql(&self) -> Result<ToSqlOutput<'_>, rusqlite::Error> {
+        Ok(match self {
+            MyValue::Null => ToSqlOutput::Borrowed(ValueRef::Null),
+            MyValue::Integer(i) => ToSqlOutput::Borrowed(ValueRef::Integer(*i)),
+            MyValue::Float(i) => ToSqlOutput::Borrowed(ValueRef::Real(*i)),
+            MyValue::Text(i) => ToSqlOutput::Borrowed(ValueRef::Text(i.as_bytes())),
+            MyValue::Bytes(ref i) => ToSqlOutput::Borrowed(ValueRef::Blob(i)),
+        })
+    }
+}
+
+impl From<Value> for MyValue {
+    fn from(v: Value) -> MyValue {
+        match v {
+            Value::Null => MyValue::Null,
+            Value::Bool(b) => MyValue::Integer(if b { 1 } else { 0 }),
+            Value::Number(i) => i
+                .as_i64()
+                .map(|i| MyValue::Integer(i))
+                .unwrap_or_else(|| MyValue::Float(i.as_f64().unwrap())),
+            Value::String(i) => MyValue::Text(i),
+            Value::Array(_) => panic!(),
+            Value::Object(_) => panic!(),
+        }
     }
 }

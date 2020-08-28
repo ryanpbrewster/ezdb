@@ -69,8 +69,15 @@ async fn handle_named_get(
 async fn handle_named_post(
     path: web::Path<String>,
     srv: web::Data<Addr<CoreActor>>,
+    params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
-    wrap_output(srv.send(RestMessage::MutateNamed(path.into_inner())).await)
+    wrap_output(
+        srv.send(RestMessage::MutateNamed(
+            path.into_inner(),
+            params.into_inner(),
+        ))
+        .await,
+    )
 }
 
 fn wrap_output(

@@ -1,13 +1,13 @@
 {
   "queries": [{
-    "name": "foo",
+    "name": "all",
     "raw_sql": "SELECT * FROM person"
   }, {
-    "name": "bar",
+    "name": "get",
     "raw_sql": "SELECT * FROM person WHERE id = :id"
   }],
   "mutations": [{
-      "name": "foo",
-      "raw_sql": "INSERT INTO person (name) VALUES ('alice')"
+      "name": "add",
+      "raw_sql": "INSERT INTO person (name) VALUES (:name)"
   }]
 }
