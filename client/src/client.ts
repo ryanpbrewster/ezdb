@@ -51,6 +51,17 @@ export class Client {
     }
     return JSON.parse(response.body);
   }
+
+  async mutate(name: string, params: Values): Promise<void> {
+    const response = await got.post(`${this.address}/v0/named/${name}`, {
+      json: params,
+      throwHttpErrors: false,
+    });
+    if (response.statusCode !== 200) {
+      throw new Error(response.body);
+    }
+    return JSON.parse(response.body);
+  }
 }
 
 export type Value = number | string;
