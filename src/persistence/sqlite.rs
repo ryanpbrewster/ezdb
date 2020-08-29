@@ -1,5 +1,5 @@
 use crate::core::{MutationPolicy, Policy, QueryPolicy};
-use crate::persistence::{Persistence, PersistenceResult};
+use crate::persistence::{Persistence, PersistenceError, PersistenceResult};
 use log::debug;
 use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, ValueRef};
 use rusqlite::{Connection, Transaction, NO_PARAMS};
@@ -47,11 +47,13 @@ impl Persistence for SqlitePersistence {
     ) -> PersistenceResult<Value> {
         debug!("running named query: {}", name);
         let txn = self.conn.unchecked_transaction()?;
-        let query: String = txn.query_row(
-            "SELECT raw_sql FROM __ezdb_metadata__ WHERE type = 'query' AND name = ?",
-            &[&name],
-            |row| row.get(0),
-        )?;
+        let query: String = txn
+            .query_row(
+                "SELECT raw_sql FROM __ezdb_metadata__ WHERE type = 'query' AND name = ?",
+                &[&name],
+                |row| row.get(0),
+            )
+            .map_err(|_| PersistenceError::NoSuchQuery(name))?;
         let params: Vec<(String, MyValue)> =
             params.into_iter().map(|(k, v)| (k, v.into())).collect();
         let params: Vec<(&str, &dyn ToSql)> = params

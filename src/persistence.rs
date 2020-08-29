@@ -7,6 +7,7 @@ pub type PersistenceResult<T> = ::std::result::Result<T, PersistenceError>;
 #[derive(Debug)]
 pub enum PersistenceError {
     Unknown(String),
+    NoSuchQuery(String),
 }
 
 impl From<rusqlite::Error> for PersistenceError {

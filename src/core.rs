@@ -37,12 +37,14 @@ pub struct Policy {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct QueryPolicy {
     pub name: String,
     pub raw_sql: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MutationPolicy {
     pub name: String,
     pub raw_sql: String,

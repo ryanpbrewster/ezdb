@@ -3,9 +3,9 @@ use actix_web::dev::HttpServiceFactory;
 use actix_web::{web, Error, HttpResponse};
 
 use crate::core::{CoreActor, Policy, RestMessage};
-use crate::persistence::PersistenceResult;
+use crate::persistence::{PersistenceError, PersistenceResult};
 use actix_web::error::ErrorInternalServerError;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 pub fn rest_service() -> impl HttpServiceFactory {
@@ -85,7 +85,22 @@ fn wrap_output(
 ) -> Result<HttpResponse, Error> {
     match result {
         Ok(Ok(data)) => Ok(HttpResponse::Ok().body(data)),
-        Ok(Err(e)) => Ok(HttpResponse::BadRequest().body(format!("{:?}", e))),
+        Ok(Err(e)) => {
+            let payload = match e {
+                PersistenceError::Unknown(msg) => json!({
+                    "code": "unknown",
+                    "message": msg,
+                }),
+                PersistenceError::NoSuchQuery(name) => json!({
+                    "code": "not_found",
+                    "message": "no such query",
+                    "details": {
+                        "name": name,
+                    },
+                }),
+            };
+            Ok(HttpResponse::BadRequest().body(payload))
+        }
         Err(_) => Err(ErrorInternalServerError("oops")),
     }
 }
