@@ -1,11 +1,10 @@
-use actix::{Addr, MailboxError};
+use actix::Addr;
 use actix_web::dev::{HttpServiceFactory, ServiceRequest};
 use actix_web::{web, Error, HttpResponse};
 
 use crate::core::{Policy, RestMessage, RoutingActor};
 use crate::persistence::{PersistenceError, PersistenceResult};
 use crate::tokens::{DatabaseAddress, DatabaseId, ProjectId};
-use actix_web::error::ErrorInternalServerError;
 use actix_web_httpauth::extractors::bearer::{BearerAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
 use actix_web_httpauth::middleware::HttpAuthentication;
@@ -50,15 +49,17 @@ async fn handle_raw_get(
     srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
     let (project_id, database_id) = path.into_inner();
-    let core = srv
-        .send(DatabaseAddress {
-            project_id,
-            database_id,
-        })
-        .await
-        .unwrap()
-        .unwrap();
-    wrap_output(core.send(RestMessage::QueryRaw(query)).await)
+    Ok(wrap_output(
+        handle_message(
+            srv.get_ref(),
+            DatabaseAddress {
+                project_id,
+                database_id,
+            },
+            RestMessage::QueryRaw(query),
+        )
+        .await,
+    ))
 }
 
 async fn handle_raw_post(
@@ -67,15 +68,17 @@ async fn handle_raw_post(
     srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
     let (project_id, database_id) = path.into_inner();
-    let core = srv
-        .send(DatabaseAddress {
-            project_id,
-            database_id,
-        })
-        .await
-        .unwrap()
-        .unwrap();
-    wrap_output(core.send(RestMessage::MutateRaw(stmt)).await)
+    Ok(wrap_output(
+        handle_message(
+            srv.get_ref(),
+            DatabaseAddress {
+                project_id,
+                database_id,
+            },
+            RestMessage::MutateRaw(stmt),
+        )
+        .await,
+    ))
 }
 
 async fn handle_policy_get(
@@ -83,15 +86,17 @@ async fn handle_policy_get(
     srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
     let (project_id, database_id) = path.into_inner();
-    let core = srv
-        .send(DatabaseAddress {
-            project_id,
-            database_id,
-        })
-        .await
-        .unwrap()
-        .unwrap();
-    wrap_output(core.send(RestMessage::FetchPolicy).await)
+    Ok(wrap_output(
+        handle_message(
+            srv.get_ref(),
+            DatabaseAddress {
+                project_id,
+                database_id,
+            },
+            RestMessage::FetchPolicy,
+        )
+        .await,
+    ))
 }
 
 async fn handle_policy_put(
@@ -100,15 +105,17 @@ async fn handle_policy_put(
     srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
     let (project_id, database_id) = path.into_inner();
-    let core = srv
-        .send(DatabaseAddress {
-            project_id,
-            database_id,
-        })
-        .await
-        .unwrap()
-        .unwrap();
-    wrap_output(core.send(RestMessage::SetPolicy(policy.into_inner())).await)
+    Ok(wrap_output(
+        handle_message(
+            srv.get_ref(),
+            DatabaseAddress {
+                project_id,
+                database_id,
+            },
+            RestMessage::SetPolicy(policy.into_inner()),
+        )
+        .await,
+    ))
 }
 
 async fn handle_named_get(
@@ -117,18 +124,17 @@ async fn handle_named_get(
     params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
     let (project_id, database_id, name) = path.into_inner();
-    let core = srv
-        .send(DatabaseAddress {
-            project_id,
-            database_id,
-        })
-        .await
-        .unwrap()
-        .unwrap();
-    wrap_output(
-        core.send(RestMessage::QueryNamed(name, params.into_inner()))
-            .await,
-    )
+    Ok(wrap_output(
+        handle_message(
+            srv.get_ref(),
+            DatabaseAddress {
+                project_id,
+                database_id,
+            },
+            RestMessage::QueryNamed(name, params.into_inner()),
+        )
+        .await,
+    ))
 }
 
 async fn handle_named_post(
@@ -137,26 +143,32 @@ async fn handle_named_post(
     params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
     let (project_id, database_id, name) = path.into_inner();
-    let core = srv
-        .send(DatabaseAddress {
-            project_id,
-            database_id,
-        })
-        .await
-        .unwrap()
-        .unwrap();
-    wrap_output(
-        core.send(RestMessage::MutateNamed(name, params.into_inner()))
-            .await,
-    )
+    Ok(wrap_output(
+        handle_message(
+            srv.get_ref(),
+            DatabaseAddress {
+                project_id,
+                database_id,
+            },
+            RestMessage::MutateNamed(name, params.into_inner()),
+        )
+        .await,
+    ))
 }
 
-fn wrap_output(
-    result: Result<PersistenceResult<String>, MailboxError>,
-) -> Result<HttpResponse, Error> {
+async fn handle_message(
+    router: &Addr<RoutingActor>,
+    db_addr: DatabaseAddress,
+    msg: RestMessage,
+) -> PersistenceResult<String> {
+    let core = router.send(db_addr).await??;
+    core.send(msg).await?
+}
+
+fn wrap_output(result: PersistenceResult<String>) -> HttpResponse {
     match result {
-        Ok(Ok(data)) => Ok(HttpResponse::Ok().body(data)),
-        Ok(Err(e)) => {
+        Ok(data) => HttpResponse::Ok().body(data),
+        Err(e) => {
             let payload = match e {
                 PersistenceError::Unknown(msg) => json!({
                     "code": "unknown",
@@ -170,8 +182,7 @@ fn wrap_output(
                     },
                 }),
             };
-            Ok(HttpResponse::BadRequest().body(payload))
+            HttpResponse::BadRequest().body(payload)
         }
-        Err(_) => Err(ErrorInternalServerError("oops")),
     }
 }

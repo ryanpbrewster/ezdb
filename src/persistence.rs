@@ -16,6 +16,12 @@ impl From<rusqlite::Error> for PersistenceError {
     }
 }
 
+impl From<actix::MailboxError> for PersistenceError {
+    fn from(err: actix::MailboxError) -> PersistenceError {
+        PersistenceError::Unknown(format!("{:?}", err))
+    }
+}
+
 pub trait Persistence {
     fn query_named(
         &self,
