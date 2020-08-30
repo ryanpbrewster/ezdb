@@ -4,7 +4,7 @@ use actix_web::{web, Error, HttpResponse};
 
 use crate::core::{Policy, RestMessage, RoutingActor};
 use crate::persistence::{PersistenceError, PersistenceResult};
-use crate::tokens::{DatabaseId, ProjectId, DatabaseAddress};
+use crate::tokens::{DatabaseAddress, DatabaseId, ProjectId};
 use actix_web::error::ErrorInternalServerError;
 use actix_web_httpauth::extractors::bearer::{BearerAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -56,6 +56,7 @@ async fn handle_raw_get(
             database_id,
         })
         .await
+        .unwrap()
         .unwrap();
     wrap_output(core.send(RestMessage::QueryRaw(query)).await)
 }
@@ -72,6 +73,7 @@ async fn handle_raw_post(
             database_id,
         })
         .await
+        .unwrap()
         .unwrap();
     wrap_output(core.send(RestMessage::MutateRaw(stmt)).await)
 }
@@ -87,6 +89,7 @@ async fn handle_policy_get(
             database_id,
         })
         .await
+        .unwrap()
         .unwrap();
     wrap_output(core.send(RestMessage::FetchPolicy).await)
 }
@@ -103,6 +106,7 @@ async fn handle_policy_put(
             database_id,
         })
         .await
+        .unwrap()
         .unwrap();
     wrap_output(core.send(RestMessage::SetPolicy(policy.into_inner())).await)
 }
@@ -119,6 +123,7 @@ async fn handle_named_get(
             database_id,
         })
         .await
+        .unwrap()
         .unwrap();
     wrap_output(
         core.send(RestMessage::QueryNamed(name, params.into_inner()))
@@ -138,6 +143,7 @@ async fn handle_named_post(
             database_id,
         })
         .await
+        .unwrap()
         .unwrap();
     wrap_output(
         core.send(RestMessage::MutateNamed(name, params.into_inner()))

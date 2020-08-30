@@ -65,4 +65,3 @@ impl DatabaseAddress {
         format!("{}-{}.sqlite", self.project_id, self.database_id)
     }
 }
-

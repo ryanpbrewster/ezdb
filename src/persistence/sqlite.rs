@@ -1,5 +1,6 @@
 use crate::core::{MutationPolicy, Policy, QueryPolicy};
 use crate::persistence::{Persistence, PersistenceError, PersistenceResult};
+use crate::tokens::DatabaseAddress;
 use log::debug;
 use rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, ValueRef};
 use rusqlite::{Connection, Transaction, NO_PARAMS};
@@ -8,7 +9,6 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use crate::tokens::DatabaseAddress;
 
 pub enum SqliteFactory {
     InMemory,

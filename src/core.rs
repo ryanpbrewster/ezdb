@@ -1,5 +1,5 @@
 use crate::persistence::{Persistence, PersistenceResult, SqliteFactory, SqlitePersistence};
-use crate::tokens::{DatabaseAddress};
+use crate::tokens::DatabaseAddress;
 use actix::prelude::*;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -26,19 +26,24 @@ impl Actor for RoutingActor {
 }
 
 impl Message for DatabaseAddress {
-    type Result = Addr<CoreActor>;
+    type Result = PersistenceResult<Addr<CoreActor>>;
 }
 impl Handler<DatabaseAddress> for RoutingActor {
-    type Result = Addr<CoreActor>;
+    type Result = PersistenceResult<Addr<CoreActor>>;
 
-    fn handle(&mut self, db_addr: DatabaseAddress, _ctx: &mut Context<Self>) -> Addr<CoreActor> {
-        match self.actors.entry(db_addr) {
+    fn handle(
+        &mut self,
+        db_addr: DatabaseAddress,
+        _ctx: &mut Context<Self>,
+    ) -> PersistenceResult<Addr<CoreActor>> {
+        let addr = match self.actors.entry(db_addr) {
             Entry::Occupied(occ) => occ.get().clone(),
             Entry::Vacant(vac) => {
-                let db = self.persistence.open(vac.key()).unwrap();
+                let db = self.persistence.open(vac.key())?;
                 vac.insert(CoreActor::new(db).start()).clone()
             }
-        }
+        };
+        Ok(addr)
     }
 }
 
