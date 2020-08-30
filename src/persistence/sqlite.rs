@@ -208,7 +208,7 @@ impl From<Value> for MyValue {
             Value::Bool(b) => MyValue::Integer(if b { 1 } else { 0 }),
             Value::Number(i) => i
                 .as_i64()
-                .map(|i| MyValue::Integer(i))
+                .map(MyValue::Integer)
                 .unwrap_or_else(|| MyValue::Float(i.as_f64().unwrap())),
             Value::String(i) => MyValue::Text(i),
             Value::Array(_) => panic!(),
