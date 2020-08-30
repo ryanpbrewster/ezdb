@@ -1,14 +1,18 @@
-import got from "got";
+import got, { Got } from "got";
 
 export class AdminClient {
-  constructor(public readonly address: string) {}
+  private client: Got;
+  constructor(address: string) {
+    this.client = got.extend({
+      prefixUrl: address,
+      headers: { authorization: "Bearer admin" },
+      throwHttpErrors: false,
+      allowGetBody: true,
+    });
+  }
 
   async setPolicy(policy: Policy): Promise<void> {
-    const response = await got.put(`${this.address}/v0/policy`, {
-      headers: { authorization: "Bearer admin" },
-      json: policy,
-      throwHttpErrors: false,
-    });
+    const response = await this.client.put(`v0/policy`, { json: policy });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
     }
@@ -16,11 +20,7 @@ export class AdminClient {
   }
 
   async mutate(rawSql: string): Promise<void> {
-    const response = await got.post(`${this.address}/v0/raw`, {
-      headers: { authorization: "Bearer admin" },
-      body: rawSql,
-      throwHttpErrors: false,
-    });
+    const response = await this.client.post(`v0/raw`, { body: rawSql });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
     }
@@ -28,11 +28,7 @@ export class AdminClient {
   }
 
   async query(rawSql: string): Promise<Values[]> {
-    const response = await got.get(`${this.address}/v0/raw`, {
-      headers: { authorization: "Bearer admin" },
-      body: rawSql,
-      throwHttpErrors: false,
-    });
+    const response = await this.client.get(`v0/raw`, { body: rawSql });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
     }
@@ -41,13 +37,19 @@ export class AdminClient {
 }
 
 export class Client {
-  constructor(public readonly address: string) {}
+  private client: Got;
+  constructor(address: string) {
+    this.client = got.extend({
+      prefixUrl: address,
+      headers: { authorization: "Bearer admin" },
+      throwHttpErrors: false,
+      allowGetBody: true,
+    });
+  }
 
   async query(name: string, params: Values): Promise<Values[]> {
-    const response = await got.get(`${this.address}/v0/named/${name}`, {
+    const response = await this.client.get(`v0/named/${name}`, {
       json: params,
-      allowGetBody: true,
-      throwHttpErrors: false,
     });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
@@ -56,9 +58,8 @@ export class Client {
   }
 
   async mutate(name: string, params: Values): Promise<void> {
-    const response = await got.post(`${this.address}/v0/named/${name}`, {
+    const response = await this.client.post(`v0/named/${name}`, {
       json: params,
-      throwHttpErrors: false,
     });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
