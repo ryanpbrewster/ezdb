@@ -4,6 +4,7 @@ use actix_web::{web, Error, HttpResponse};
 
 use crate::core::{CoreActor, Policy, RestMessage};
 use crate::persistence::{PersistenceError, PersistenceResult};
+use crate::tokens::{DatabaseId, ProjectId};
 use actix_web::error::ErrorInternalServerError;
 use actix_web_httpauth::extractors::bearer::{BearerAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -13,7 +14,7 @@ use std::collections::BTreeMap;
 
 pub fn rest_service() -> impl HttpServiceFactory {
     let auth = HttpAuthentication::bearer(verify_admin_auth);
-    web::scope("/v0")
+    web::scope("/v0/{project_id}/{database_id}")
         .service(
             web::resource("/raw")
                 .wrap(auth.clone())
@@ -44,6 +45,7 @@ async fn verify_admin_auth(
 }
 
 async fn handle_raw_get(
+    path: web::Path<(ProjectId, DatabaseId)>,
     query: String,
     srv: web::Data<Addr<CoreActor>>,
 ) -> Result<HttpResponse, Error> {
@@ -51,17 +53,22 @@ async fn handle_raw_get(
 }
 
 async fn handle_raw_post(
+    path: web::Path<(ProjectId, DatabaseId)>,
     stmt: String,
     srv: web::Data<Addr<CoreActor>>,
 ) -> Result<HttpResponse, Error> {
     wrap_output(srv.send(RestMessage::MutateRaw(stmt)).await)
 }
 
-async fn handle_policy_get(srv: web::Data<Addr<CoreActor>>) -> Result<HttpResponse, Error> {
+async fn handle_policy_get(
+    path: web::Path<(ProjectId, DatabaseId)>,
+    srv: web::Data<Addr<CoreActor>>,
+) -> Result<HttpResponse, Error> {
     wrap_output(srv.send(RestMessage::FetchPolicy).await)
 }
 
 async fn handle_policy_put(
+    path: web::Path<(ProjectId, DatabaseId)>,
     policy: web::Json<Policy>,
     srv: web::Data<Addr<CoreActor>>,
 ) -> Result<HttpResponse, Error> {
@@ -69,30 +76,26 @@ async fn handle_policy_put(
 }
 
 async fn handle_named_get(
-    path: web::Path<String>,
+    path: web::Path<(ProjectId, DatabaseId, String)>,
     srv: web::Data<Addr<CoreActor>>,
     params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
+    let (_project_id, _database_id, name) = path.into_inner();
     wrap_output(
-        srv.send(RestMessage::QueryNamed(
-            path.into_inner(),
-            params.into_inner(),
-        ))
-        .await,
+        srv.send(RestMessage::QueryNamed(name, params.into_inner()))
+            .await,
     )
 }
 
 async fn handle_named_post(
-    path: web::Path<String>,
+    path: web::Path<(ProjectId, DatabaseId, String)>,
     srv: web::Data<Addr<CoreActor>>,
     params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
+    let (_project_id, _database_id, name) = path.into_inner();
     wrap_output(
-        srv.send(RestMessage::MutateNamed(
-            path.into_inner(),
-            params.into_inner(),
-        ))
-        .await,
+        srv.send(RestMessage::MutateNamed(name, params.into_inner()))
+            .await,
     )
 }
 
