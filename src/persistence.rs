@@ -31,4 +31,5 @@ pub trait Persistence {
 
 mod sqlite;
 
+pub use sqlite::SqliteFactory;
 pub use sqlite::SqlitePersistence;

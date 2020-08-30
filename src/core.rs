@@ -1,10 +1,46 @@
-use crate::persistence::{Persistence, PersistenceError, PersistenceResult, SqlitePersistence};
-use crate::tokens::DatabaseId;
+use crate::persistence::{Persistence, PersistenceResult, SqliteFactory, SqlitePersistence};
+use crate::tokens::{DatabaseAddress};
 use actix::prelude::*;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap};
+
+/// `RoutingActor` supervises all the active databases.
+pub struct RoutingActor {
+    persistence: SqliteFactory,
+    actors: HashMap<DatabaseAddress, Addr<CoreActor>>,
+}
+impl RoutingActor {
+    pub fn new(persistence: SqliteFactory) -> RoutingActor {
+        RoutingActor {
+            persistence,
+            actors: HashMap::new(),
+        }
+    }
+}
+
+impl Actor for RoutingActor {
+    type Context = Context<Self>;
+}
+
+impl Message for DatabaseAddress {
+    type Result = Addr<CoreActor>;
+}
+impl Handler<DatabaseAddress> for RoutingActor {
+    type Result = Addr<CoreActor>;
+
+    fn handle(&mut self, db_addr: DatabaseAddress, _ctx: &mut Context<Self>) -> Addr<CoreActor> {
+        match self.actors.entry(db_addr) {
+            Entry::Occupied(occ) => occ.get().clone(),
+            Entry::Vacant(vac) => {
+                let db = self.persistence.open(vac.key()).unwrap();
+                vac.insert(CoreActor::new(db).start()).clone()
+            }
+        }
+    }
+}
 
 /// `CoreActor` manages connections to a given database.
 pub struct CoreActor {

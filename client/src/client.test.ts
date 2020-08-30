@@ -1,13 +1,15 @@
 import { AdminClient, Client } from "./client";
+import { makeId } from "./utils";
 
 describe("Client", () => {
   it("should be able to query", async () => {
-    const admin = new AdminClient("http://localhost:9000");
+    const config = { projectId: makeId() };
+    const admin = new AdminClient(config);
     await admin.mutate(`
-        CREATE TABLE IF NOT EXISTS person (id TEXT PRIMARY KEY, name TEXT NOT NULL)
+        CREATE TABLE person (id TEXT PRIMARY KEY, name TEXT NOT NULL)
     `);
     await admin.mutate(`
-        INSERT OR IGNORE INTO person (id, name)
+        INSERT INTO person (id, name)
         VALUES ('alice', 'Alice Accountant'), ('bob', 'Bob Banker')
     `);
     await admin.setPolicy({
@@ -19,16 +21,16 @@ describe("Client", () => {
       ],
       mutations: [],
     });
-    const client = new Client("http://localhost:9000");
+    const client = new Client(config);
     const result = await client.query("get_person", { ":id": "alice" });
     expect(result).toContainEqual({ name: "Alice Accountant" });
   });
 
   it("should be able to mutate", async () => {
-    const admin = new AdminClient("http://localhost:9000");
-    await admin.mutate(`DROP TABLE IF EXISTS person`);
+    const config = { projectId: makeId() };
+    const admin = new AdminClient(config);
     await admin.mutate(`
-        CREATE TABLE IF NOT EXISTS person (id TEXT PRIMARY KEY, name TEXT NOT NULL)
+        CREATE TABLE person (id TEXT PRIMARY KEY, name TEXT NOT NULL)
     `);
     await admin.setPolicy({
       queries: [
@@ -48,7 +50,7 @@ describe("Client", () => {
         },
       ],
     });
-    const client = new Client("http://localhost:9000");
+    const client = new Client(config);
 
     expect(await client.query("get_person", { ":id": "alice" })).toHaveLength(
       0

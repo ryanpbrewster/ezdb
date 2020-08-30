@@ -7,7 +7,33 @@ use serde::ser::Serializer;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use crate::tokens::DatabaseAddress;
+
+pub enum SqliteFactory {
+    InMemory,
+    FileSystem { dir: PathBuf },
+}
+
+impl SqliteFactory {
+    pub fn in_memory() -> SqliteFactory {
+        SqliteFactory::InMemory
+    }
+    pub fn from_dir(dir: PathBuf) -> SqliteFactory {
+        SqliteFactory::FileSystem { dir }
+    }
+
+    pub fn open(&self, db_addr: &DatabaseAddress) -> PersistenceResult<SqlitePersistence> {
+        match self {
+            SqliteFactory::InMemory => SqlitePersistence::in_memory(),
+            SqliteFactory::FileSystem { dir } => {
+                let mut path = dir.clone();
+                path.push(db_addr.filename());
+                SqlitePersistence::from_file(&path)
+            }
+        }
+    }
+}
 
 pub struct SqlitePersistence {
     conn: Connection,

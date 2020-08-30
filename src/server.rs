@@ -2,9 +2,9 @@ use actix::{Addr, MailboxError};
 use actix_web::dev::{HttpServiceFactory, ServiceRequest};
 use actix_web::{web, Error, HttpResponse};
 
-use crate::core::{CoreActor, Policy, RestMessage};
+use crate::core::{Policy, RestMessage, RoutingActor};
 use crate::persistence::{PersistenceError, PersistenceResult};
-use crate::tokens::{DatabaseId, ProjectId};
+use crate::tokens::{DatabaseId, ProjectId, DatabaseAddress};
 use actix_web::error::ErrorInternalServerError;
 use actix_web_httpauth::extractors::bearer::{BearerAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -47,54 +47,100 @@ async fn verify_admin_auth(
 async fn handle_raw_get(
     path: web::Path<(ProjectId, DatabaseId)>,
     query: String,
-    srv: web::Data<Addr<CoreActor>>,
+    srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
-    wrap_output(srv.send(RestMessage::QueryRaw(query)).await)
+    let (project_id, database_id) = path.into_inner();
+    let core = srv
+        .send(DatabaseAddress {
+            project_id,
+            database_id,
+        })
+        .await
+        .unwrap();
+    wrap_output(core.send(RestMessage::QueryRaw(query)).await)
 }
 
 async fn handle_raw_post(
     path: web::Path<(ProjectId, DatabaseId)>,
     stmt: String,
-    srv: web::Data<Addr<CoreActor>>,
+    srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
-    wrap_output(srv.send(RestMessage::MutateRaw(stmt)).await)
+    let (project_id, database_id) = path.into_inner();
+    let core = srv
+        .send(DatabaseAddress {
+            project_id,
+            database_id,
+        })
+        .await
+        .unwrap();
+    wrap_output(core.send(RestMessage::MutateRaw(stmt)).await)
 }
 
 async fn handle_policy_get(
     path: web::Path<(ProjectId, DatabaseId)>,
-    srv: web::Data<Addr<CoreActor>>,
+    srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
-    wrap_output(srv.send(RestMessage::FetchPolicy).await)
+    let (project_id, database_id) = path.into_inner();
+    let core = srv
+        .send(DatabaseAddress {
+            project_id,
+            database_id,
+        })
+        .await
+        .unwrap();
+    wrap_output(core.send(RestMessage::FetchPolicy).await)
 }
 
 async fn handle_policy_put(
     path: web::Path<(ProjectId, DatabaseId)>,
     policy: web::Json<Policy>,
-    srv: web::Data<Addr<CoreActor>>,
+    srv: web::Data<Addr<RoutingActor>>,
 ) -> Result<HttpResponse, Error> {
-    wrap_output(srv.send(RestMessage::SetPolicy(policy.into_inner())).await)
+    let (project_id, database_id) = path.into_inner();
+    let core = srv
+        .send(DatabaseAddress {
+            project_id,
+            database_id,
+        })
+        .await
+        .unwrap();
+    wrap_output(core.send(RestMessage::SetPolicy(policy.into_inner())).await)
 }
 
 async fn handle_named_get(
     path: web::Path<(ProjectId, DatabaseId, String)>,
-    srv: web::Data<Addr<CoreActor>>,
+    srv: web::Data<Addr<RoutingActor>>,
     params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
-    let (_project_id, _database_id, name) = path.into_inner();
+    let (project_id, database_id, name) = path.into_inner();
+    let core = srv
+        .send(DatabaseAddress {
+            project_id,
+            database_id,
+        })
+        .await
+        .unwrap();
     wrap_output(
-        srv.send(RestMessage::QueryNamed(name, params.into_inner()))
+        core.send(RestMessage::QueryNamed(name, params.into_inner()))
             .await,
     )
 }
 
 async fn handle_named_post(
     path: web::Path<(ProjectId, DatabaseId, String)>,
-    srv: web::Data<Addr<CoreActor>>,
+    srv: web::Data<Addr<RoutingActor>>,
     params: web::Json<BTreeMap<String, Value>>,
 ) -> Result<HttpResponse, Error> {
-    let (_project_id, _database_id, name) = path.into_inner();
+    let (project_id, database_id, name) = path.into_inner();
+    let core = srv
+        .send(DatabaseAddress {
+            project_id,
+            database_id,
+        })
+        .await
+        .unwrap();
     wrap_output(
-        srv.send(RestMessage::MutateNamed(name, params.into_inner()))
+        core.send(RestMessage::MutateNamed(name, params.into_inner()))
             .await,
     )
 }

@@ -1,10 +1,19 @@
 import got, { Got } from "got";
 
+interface ClientConfig {
+  readonly address?: string;
+  readonly projectId: string;
+  readonly databaseId?: string;
+}
 export class AdminClient {
   private client: Got;
-  constructor(address: string) {
+  constructor({
+    address = "http://localhost:9000",
+    projectId,
+    databaseId = "default",
+  }: ClientConfig) {
     this.client = got.extend({
-      prefixUrl: address,
+      prefixUrl: `${address}/v0/${projectId}/${databaseId}`,
       headers: { authorization: "Bearer admin" },
       throwHttpErrors: false,
       allowGetBody: true,
@@ -12,7 +21,7 @@ export class AdminClient {
   }
 
   async setPolicy(policy: Policy): Promise<void> {
-    const response = await this.client.put(`v0/policy`, { json: policy });
+    const response = await this.client.put(`policy`, { json: policy });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
     }
@@ -20,7 +29,7 @@ export class AdminClient {
   }
 
   async mutate(rawSql: string): Promise<void> {
-    const response = await this.client.post(`v0/raw`, { body: rawSql });
+    const response = await this.client.post(`raw`, { body: rawSql });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
     }
@@ -28,7 +37,7 @@ export class AdminClient {
   }
 
   async query(rawSql: string): Promise<Values[]> {
-    const response = await this.client.get(`v0/raw`, { body: rawSql });
+    const response = await this.client.get(`raw`, { body: rawSql });
     if (response.statusCode !== 200) {
       throw new ApiError(response.statusCode, response.body);
     }
@@ -38,9 +47,13 @@ export class AdminClient {
 
 export class Client {
   private client: Got;
-  constructor(address: string) {
+  constructor({
+    address = "http://localhost:9000",
+    projectId,
+    databaseId = "default",
+  }: ClientConfig) {
     this.client = got.extend({
-      prefixUrl: address,
+      prefixUrl: `${address}/v0/${projectId}/${databaseId}`,
       headers: { authorization: "Bearer admin" },
       throwHttpErrors: false,
       allowGetBody: true,
@@ -48,7 +61,7 @@ export class Client {
   }
 
   async query(name: string, params: Values): Promise<Values[]> {
-    const response = await this.client.get(`v0/named/${name}`, {
+    const response = await this.client.get(`named/${name}`, {
       json: params,
     });
     if (response.statusCode !== 200) {
@@ -58,7 +71,7 @@ export class Client {
   }
 
   async mutate(name: string, params: Values): Promise<void> {
-    const response = await this.client.post(`v0/named/${name}`, {
+    const response = await this.client.post(`named/${name}`, {
       json: params,
     });
     if (response.statusCode !== 200) {

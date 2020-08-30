@@ -9,11 +9,11 @@ async fn main() -> std::io::Result<()> {
     let opts: CliOptions = CliOptions::from_args();
     let addr = format!("{}:{}", opts.host, opts.port);
 
-    let persistence = match opts.db_file {
-        None => ezdb::persistence::SqlitePersistence::in_memory().unwrap(),
-        Some(db_file) => ezdb::persistence::SqlitePersistence::from_file(&db_file).unwrap(),
+    let persistence = match opts.db_dir {
+        None => ezdb::persistence::SqliteFactory::InMemory,
+        Some(dir) => ezdb::persistence::SqliteFactory::FileSystem { dir },
     };
-    let core = ezdb::core::CoreActor::new(persistence).start();
+    let core = ezdb::core::RoutingActor::new(persistence).start();
     HttpServer::new(move || {
         App::new()
             .data(core.clone())
@@ -33,5 +33,5 @@ struct CliOptions {
     #[structopt(long, default_value = "9000")]
     port: usize,
     #[structopt(long, parse(from_os_str))]
-    db_file: Option<PathBuf>,
+    db_dir: Option<PathBuf>,
 }

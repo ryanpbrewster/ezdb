@@ -1,7 +1,8 @@
 use crate::persistence::{PersistenceError, PersistenceResult};
 use serde::Deserialize;
+use std::fmt;
 
-#[derive(PartialEq, Eq, Deserialize)]
+#[derive(PartialEq, Eq, Deserialize, Hash)]
 pub struct ProjectId(String);
 impl ProjectId {
     pub fn new(raw: String) -> PersistenceResult<ProjectId> {
@@ -15,8 +16,13 @@ impl ProjectId {
         }
     }
 }
+impl fmt::Display for ProjectId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
 
-#[derive(PartialEq, Eq, Deserialize)]
+#[derive(PartialEq, Eq, Deserialize, Hash)]
 pub struct DatabaseId(String);
 impl DatabaseId {
     pub fn new(raw: String) -> PersistenceResult<DatabaseId> {
@@ -28,6 +34,11 @@ impl DatabaseId {
                 raw
             )))
         }
+    }
+}
+impl fmt::Display for DatabaseId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
@@ -43,3 +54,15 @@ fn is_valid_token(raw: &str) -> bool {
             .enumerate()
             .all(|(idx, b)| b.is_ascii_alphabetic() || (idx > 0 && b.is_ascii_digit()))
 }
+
+#[derive(Hash, PartialEq, Eq)]
+pub struct DatabaseAddress {
+    pub project_id: ProjectId,
+    pub database_id: DatabaseId,
+}
+impl DatabaseAddress {
+    pub fn filename(&self) -> String {
+        format!("{}-{}.sqlite", self.project_id, self.database_id)
+    }
+}
+
