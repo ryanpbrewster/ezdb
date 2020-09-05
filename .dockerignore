@@ -1,5 +1,4 @@
-/.git
-/Dockerfile
-/client/
-/sample-data/
-/target/
+**
+!/src
+!/Cargo.toml
+!/Cargo.lock
