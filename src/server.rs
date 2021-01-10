@@ -181,6 +181,14 @@ fn wrap_output(result: PersistenceResult<String>) -> HttpResponse {
                         "name": name,
                     },
                 }),
+                PersistenceError::Interrupted => json!({
+                    "code": "interrupted",
+                    "message": "Operation was interrupted",
+                }),
+                PersistenceError::Busy => json!({
+                    "code": "busy",
+                    "message": "Database is busy, back off and try again",
+                }),
             };
             HttpResponse::BadRequest().body(payload)
         }
