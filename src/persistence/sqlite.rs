@@ -168,6 +168,10 @@ impl Persistence for SqlitePersistence {
         txn.commit()?;
         Ok(())
     }
+
+    fn get_interrupt_handle(&self) -> rusqlite::InterruptHandle {
+        self.conn.get_interrupt_handle()
+    }
 }
 
 fn populate_policy(txn: &mut Transaction, policy: Policy) -> PersistenceResult<()> {

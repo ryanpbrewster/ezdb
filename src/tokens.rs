@@ -1,18 +1,15 @@
-use crate::persistence::{PersistenceError, PersistenceResult};
-use serde::Deserialize;
-use std::fmt;
+use serde::{Deserialize, Deserializer};
+use std::{fmt, str::FromStr};
 
-#[derive(PartialEq, Eq, Deserialize, Hash)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct ProjectId(String);
-impl ProjectId {
-    pub fn new(raw: String) -> PersistenceResult<ProjectId> {
-        if is_valid_token(&raw) {
-            Ok(ProjectId(raw))
+impl FromStr for ProjectId {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if is_valid_token(s) {
+            Ok(ProjectId(s.to_owned()))
         } else {
-            Err(PersistenceError::Unknown(format!(
-                "invalid project id: {}",
-                raw
-            )))
+            Err(format!("invalid project id: {}", s))
         }
     }
 }
@@ -21,24 +18,42 @@ impl fmt::Display for ProjectId {
         f.write_str(&self.0)
     }
 }
+impl<'de> Deserialize<'de> for ProjectId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(serde::de::Error::custom)
+    }
+}
 
-#[derive(PartialEq, Eq, Deserialize, Hash)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct DatabaseId(String);
-impl DatabaseId {
-    pub fn new(raw: String) -> PersistenceResult<DatabaseId> {
-        if is_valid_token(&raw) {
-            Ok(DatabaseId(raw))
+impl FromStr for DatabaseId {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if is_valid_token(s) {
+            Ok(DatabaseId(s.to_owned()))
         } else {
-            Err(PersistenceError::Unknown(format!(
-                "invalid database id: {}",
-                raw
-            )))
+            Err(format!("invalid database id: {}", s))
         }
     }
 }
 impl fmt::Display for DatabaseId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0)
+    }
+}
+impl<'de> Deserialize<'de> for DatabaseId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(serde::de::Error::custom)
     }
 }
 
