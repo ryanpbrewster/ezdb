@@ -19,9 +19,6 @@ mod test {
         let stmt = conn
             .prepare("SELECT my_int, my_string, my_float FROM foo")
             .unwrap();
-        assert_eq!(
-            stmt.column_names(),
-            vec!["my_int", "my_string", "my_float",]
-        );
+        assert_eq!(stmt.column_names(), vec!["my_int", "my_string", "my_float"]);
     }
 }
