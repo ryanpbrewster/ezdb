@@ -2,7 +2,7 @@ use actix::Addr;
 use actix_web::dev::{HttpServiceFactory, ServiceRequest};
 use actix_web::{web, Error, HttpResponse};
 
-use crate::core::{Policy, RestMessage, RoutingActor};
+use crate::core::{DataMessage, EzdbMessage, Policy, RoutingActor};
 use crate::persistence::{PersistenceError, PersistenceResult};
 use crate::tokens::{DatabaseAddress, DatabaseId, ProjectId};
 use actix_web_httpauth::extractors::bearer::{BearerAuth, Config};
@@ -56,7 +56,7 @@ async fn handle_raw_get(
                 project_id,
                 database_id,
             },
-            RestMessage::QueryRaw(query),
+            EzdbMessage::Data(DataMessage::QueryRaw(query)),
         )
         .await,
     ))
@@ -75,7 +75,7 @@ async fn handle_raw_post(
                 project_id,
                 database_id,
             },
-            RestMessage::MutateRaw(stmt),
+            EzdbMessage::Data(DataMessage::MutateRaw(stmt)),
         )
         .await,
     ))
@@ -93,7 +93,7 @@ async fn handle_policy_get(
                 project_id,
                 database_id,
             },
-            RestMessage::FetchPolicy,
+            EzdbMessage::Data(DataMessage::FetchPolicy),
         )
         .await,
     ))
@@ -112,7 +112,7 @@ async fn handle_policy_put(
                 project_id,
                 database_id,
             },
-            RestMessage::SetPolicy(policy.into_inner()),
+            EzdbMessage::Data(DataMessage::SetPolicy(policy.into_inner())),
         )
         .await,
     ))
@@ -131,7 +131,7 @@ async fn handle_named_get(
                 project_id,
                 database_id,
             },
-            RestMessage::QueryNamed(name, params.into_inner()),
+            EzdbMessage::Data(DataMessage::QueryNamed(name, params.into_inner())),
         )
         .await,
     ))
@@ -150,7 +150,7 @@ async fn handle_named_post(
                 project_id,
                 database_id,
             },
-            RestMessage::MutateNamed(name, params.into_inner()),
+            EzdbMessage::Data(DataMessage::MutateNamed(name, params.into_inner())),
         )
         .await,
     ))
@@ -159,7 +159,7 @@ async fn handle_named_post(
 async fn handle_message(
     router: &Addr<RoutingActor>,
     db_addr: DatabaseAddress,
-    msg: RestMessage,
+    msg: EzdbMessage,
 ) -> PersistenceResult<String> {
     let core = router.send(db_addr).await??;
     core.send(msg).await?
