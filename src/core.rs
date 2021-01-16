@@ -80,18 +80,13 @@ impl CoreActor {
         let signal2 = signal.clone();
         std::thread::spawn(move || {
             let signal = signal.clone();
-            while let Ok(Job {
-                input,
-                output,
-                generation,
-            }) = rx.recv()
-            {
-                let r = if signal.load(Ordering::Relaxed) > generation {
+            while let Ok(job) = rx.recv() {
+                let r = if signal.load(Ordering::Relaxed) > job.generation {
                     Err(PersistenceError::Interrupted)
                 } else {
-                    handle_data_request(&mut persistence, input)
+                    handle_data_request(&mut persistence, job.input)
                 };
-                let _ = output.send(r);
+                let _ = job.output.send(r);
             }
         });
         CoreActor {
