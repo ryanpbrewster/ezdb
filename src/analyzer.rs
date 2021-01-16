@@ -19,16 +19,9 @@ mod test {
         let stmt = conn
             .prepare("SELECT my_int, my_string, my_float FROM foo")
             .unwrap();
-        let cols = stmt.columns();
         assert_eq!(
-            cols.iter()
-                .map(|c| (c.name(), c.decl_type().unwrap()))
-                .collect::<Vec<_>>(),
-            vec![
-                ("my_int", "INTEGER"),
-                ("my_string", "TEXT"),
-                ("my_float", "REAL")
-            ]
+            stmt.column_names(),
+            vec!["my_int", "my_string", "my_float",]
         );
     }
 }
