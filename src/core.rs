@@ -1,6 +1,4 @@
-use crate::persistence::{
-    Persistence, PersistenceError, PersistenceResult, SqliteFactory, SqlitePersistence,
-};
+use crate::persistence::{Persistence, PersistenceError, PersistenceResult, SqliteFactory};
 use crate::tokens::DatabaseAddress;
 use actix::prelude::*;
 use crossbeam_channel::Sender;
@@ -50,7 +48,7 @@ impl Handler<DatabaseAddress> for RoutingActor {
         let addr = match self.actors.entry(db_addr) {
             Entry::Occupied(occ) => occ.get().clone(),
             Entry::Vacant(vac) => {
-                let db = self.persistence.open(vac.key())?;
+                let db = crate::persistence::Timed::new(self.persistence.open(vac.key())?);
                 vac.insert(CoreActor::new(db).start()).clone()
             }
         };
@@ -72,8 +70,8 @@ pub struct CoreActor {
 
 const MAILBOX_SIZE: usize = 16;
 impl CoreActor {
-    pub fn new(mut persistence: SqlitePersistence) -> CoreActor {
-        let interrupt_handle = persistence.get_interrupt_handle();
+    pub fn new<P: Persistence + 'static>(mut persistence: P) -> CoreActor {
+        let interrupt_handle = (&persistence).get_interrupt_handle();
         let (tx, rx) =
             crossbeam_channel::bounded::<Job<DataMessage, PersistenceResult<String>>>(MAILBOX_SIZE);
         let signal = Arc::new(AtomicUsize::new(0));
@@ -183,8 +181,8 @@ impl Handler<EzdbMessage> for CoreActor {
     }
 }
 
-fn handle_data_request(
-    persistence: &mut SqlitePersistence,
+fn handle_data_request<P: Persistence>(
+    persistence: &mut P,
     msg: DataMessage,
 ) -> PersistenceResult<String> {
     debug!("handling {:?}", msg);

@@ -30,7 +30,7 @@ impl From<actix::MailboxError> for PersistenceError {
     }
 }
 
-pub trait Persistence {
+pub trait Persistence: Send {
     fn query_named(
         &self,
         name: String,
@@ -45,6 +45,8 @@ pub trait Persistence {
 }
 
 mod sqlite;
+mod timed;
 
 pub use sqlite::SqliteFactory;
 pub use sqlite::SqlitePersistence;
+pub use timed::Timed;

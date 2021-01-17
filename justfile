@@ -1,2 +1,2 @@
 serve:
-  RUST_LOG=info cargo run
+  RUST_LOG=info,ezdb=trace cargo run
